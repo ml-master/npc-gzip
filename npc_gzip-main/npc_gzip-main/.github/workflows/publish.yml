@@ -1,0 +1,48 @@
+name: Publish npc_gzip package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+
+  pypi-publish:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Show Poetry version
+        run: poetry --version
+
+      - name: Install project and dependencies
+        run: poetry install
+
+      - name: Run Tests
+        run: poetry run pytest --junit-xml=junit/test-results-ubuntu-3.9.xml
+
+      - name: Upload pytest test results
+        if: ${{ !cancelled() }}  # Upload results even if tests fail.
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results-ubuntu-3.9
+          path: junit/test-results-ubuntu-3.9.xml
+
+      - name: Build Package
+        run: poetry build
+
+      - name: Publish Package
+        uses: pypa/gh-action-pypi-publish@v1.8.8
